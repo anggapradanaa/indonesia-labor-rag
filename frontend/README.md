@@ -8,10 +8,17 @@ client resmi mereka buat streaming.
 
 ```
 Browser -> app/page.tsx (chat UI)
+        -> GET  /api/status -> HF API runtime.stage (indikator status server)
         -> POST /api/chat (Next.js Route Handler)
+             -> cek status Space dulu (error -> pesan jelas, bukan error generik)
              -> @gradio/client -> HF Space (anggapradanaa/indonesia-labor-rag)
-             -> stream balik ke browser (plain text, bukan SSE/AI SDK protocol)
+             -> stream balik ke browser sebagai NDJSON:
+                {"type":"status"|"delta"|"error","text":"..."}
 ```
+
+Jawaban dirender `components/answer.tsx` (markdown ringan: paragraf, list,
+**bold**) dan sitasi `(Pasal N)` / `(Penjelasan Pasal N)` jadi chip, plus
+baris "Dasar hukum" di bawah tiap jawaban.
 
 ## Run lokal
 
@@ -32,5 +39,9 @@ npm run dev
 
 - Backend (HF Space) bisa sleep kalau idle lama -> request pertama abis sleep
   bakal lambat (cold start, model didownload ulang -- lihat `backend/README.md`).
+  `Client.connect` dikasih `status_callback` supaya `@gradio/client` mau
+  bangunin Space yang lagi sleep; route-nya `maxDuration = 300`.
+- Kalau UI bilang "Server sedang bermasalah" (stage `RUNTIME_ERROR` dll), itu
+  Space-nya yang mati, bukan frontend -> restart Space dari halaman Settings HF.
 - Kalau ganti nama Space atau pindah owner, update `HF_SPACE` di Vercel env,
   redeploy.

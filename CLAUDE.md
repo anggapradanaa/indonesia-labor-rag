@@ -84,4 +84,7 @@ Chatbot publik penuh, $0, no GPU dipunya sendiri. Deploy ulang: `cd frontend && 
 ## Gotcha frontend (Fase 5)
 
 - `@gradio/client`'s `submit(endpoint, data)` — key di object payload HARUS `parameter_name` (mis. `message`, lowercase, dari nama parameter Python), BUKAN `label` yang ditampilin UI (mis. "Message"). Cek pakai `demo.get_api_info()` kalau nama endpoint/parameter berubah.
-- Next.js API route (`app/api/chat/route.ts`) convert cumulative text dari Gradio (`respond()` yield full partial tiap kali, bukan delta) jadi delta beneran (slice by previous length) sebelum di-stream ke browser — biar frontend tinggal append, nggak perlu logic replace.
+- Next.js API route (`app/api/chat/route.ts`) convert cumulative text dari Gradio (`respond()` yield full partial tiap kali, bukan delta) jadi delta beneran (slice by previous length) sebelum di-stream ke browser — biar frontend tinggal append, nggak perlu logic replace. Stream ke browser formatnya NDJSON (`status`/`delta`/`error`).
+- `Client.connect` TANPA `status_callback` nggak bangunin Space yang sleep (langsung 503). Exception di backend datang sebagai `event.type === "status"` + `stage === "error"`, bukan throw — harus di-handle eksplisit, kalau nggak jawaban kosong diam-diam.
+- Error "gagal menghubungi backend" pas live (Nov 2026) ternyata Space `RUNTIME_ERROR`: container ZeroGPU gagal start di sisi HF (`OCI runtime create failed ... prestart hook`), bukan bug kode. Fix: restart / factory reboot Space dari Settings. `/api/status` sekarang nampilin status ini di UI.
+- Metadata `bab` di `chunks.json` geser 1 Pasal (Pasal 1 ke-tag BAB II, dst) karena heading BAB nempel di akhir chunk sebelumnya. Range asli: PKWT 2–17, Alih Daya 18–20, Waktu Kerja 21–35, PHK 36–59.
