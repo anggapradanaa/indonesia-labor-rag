@@ -5,6 +5,8 @@ cuma beda pembungkus: Gradio ChatInterface kasih UI chat gratis + Next.js (Fase 
 nanti bisa manggil Space ini lewat @gradio/client tanpa perlu endpoint FastAPI manual.
 """
 
+import traceback
+
 import gradio as gr
 
 from chat_core import stream_answer
@@ -29,9 +31,15 @@ except ImportError:
 
 def respond(message, history):
     partial = ""
-    for delta in stream_answer(message):
-        partial += delta
-        yield partial
+    try:
+        for delta in stream_answer(message):
+            partial += delta
+            yield partial
+    except Exception as e:
+        # Tanpa ini Gradio cuma kirim `event: error, data: null` ke client ->
+        # penyebab asli (mis. model Groq dipensiunkan) nggak kelihatan dari luar.
+        traceback.print_exc()
+        raise gr.Error(f"{type(e).__name__}: {str(e)[:300]}")
 
 
 demo = gr.ChatInterface(

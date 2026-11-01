@@ -13,7 +13,7 @@ dokumen asli, wajib sitasi Pasal.
 Browser -> Next.js (Vercel)
         -> HF Space "anggapradanaa/indonesia-labor-rag" (SDK Gradio, ZeroGPU)
              -> hybrid search (BGE-M3 dense + BM25 sparse) + rerank + cross-ref expansion
-             -> Groq (llama-3.3-70b-versatile) -> jawaban + sitasi Pasal
+             -> Groq (openai/gpt-oss-120b) -> jawaban + sitasi Pasal
 ```
 
 Semua komponen open-source / free-tier — total biaya **$0**. Nggak ada GPU
@@ -23,7 +23,7 @@ yang dipunya/disewa sendiri.
 
 | Layer | Pilihan |
 |---|---|
-| LLM | Groq `llama-3.3-70b-versatile` |
+| LLM | Groq `openai/gpt-oss-120b` (fallback `openai/gpt-oss-20b`) |
 | Embedding | BGE-M3 (dense) + BM25 manual (sparse) |
 | Reranker | BGE-reranker-v2-m3 |
 | Vector index | Qdrant (local file, statis, di-commit) |

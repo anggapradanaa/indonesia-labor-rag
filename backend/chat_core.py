@@ -14,8 +14,12 @@ import rag
 load_dotenv()
 
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
-PRIMARY_MODEL = "llama-3.3-70b-versatile"
-FALLBACK_MODEL = "llama-3.1-8b-instant"
+# llama-3.3-70b-versatile & llama-3.1-8b-instant dimatiin Groq 16 Agustus 2026
+# (bikin semua chat error). Pengganti resmi dari halaman deprecations Groq.
+# Bisa dioverride lewat env / HF Space secret tanpa ubah kode kalau nanti
+# model ini dipensiunkan juga.
+PRIMARY_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+FALLBACK_MODEL = os.environ.get("GROQ_FALLBACK_MODEL", "openai/gpt-oss-20b")
 
 SYSTEM_PROMPT = """Kamu asisten hukum yang jawab pertanyaan seputar PP Nomor 35 Tahun 2021 \
 (Perjanjian Kerja Waktu Tertentu, Alih Daya, Waktu Kerja dan Waktu Istirahat, dan \
@@ -43,22 +47,40 @@ def _stream_groq(message: str, context: str, model: str):
         ],
         stream=True,
         temperature=0.1,
+        # gpt-oss = model reasoning: effort rendah biar cepat, dan reasoning-nya
+        # jangan ikut dikirim (cuma butuh jawaban final di delta.content).
+        extra_body={"reasoning_effort": "low", "include_reasoning": False},
     )
     for chunk in stream:
+        if not chunk.choices:
+            continue
         delta = chunk.choices[0].delta.content
         if delta:
             yield delta
 
 
+def _should_fallback(e: Exception) -> bool:
+    """Rate limit, atau model primary udah nggak ada (dipensiunkan/salah nama)."""
+    msg = str(e).lower()
+    return any(
+        key in msg
+        for key in ("rate_limit", "429", "model_decommissioned", "model_not_found", "does not exist", "404")
+    )
+
+
 def stream_answer(message: str):
     """Generator string chunk. Retrieve dulu (sekali), lalu stream jawaban Groq
-    (fallback ke model 8B kalau primary kena rate limit)."""
+    (fallback ke model cadangan kalau primary kena rate limit / nggak tersedia)."""
     chunks = rag.retrieve(message, top_k=5)
     context = rag.build_context(chunks)
+    produced = False
     try:
-        yield from _stream_groq(message, context, PRIMARY_MODEL)
+        for delta in _stream_groq(message, context, PRIMARY_MODEL):
+            produced = True
+            yield delta
     except Exception as e:
-        if "rate_limit" in str(e).lower() or "429" in str(e):
-            yield from _stream_groq(message, context, FALLBACK_MODEL)
-        else:
+        # Jangan fallback kalau jawaban udah setengah jalan (bakal dobel).
+        if produced or not _should_fallback(e):
             raise
+        print(f"[chat_core] {PRIMARY_MODEL} gagal ({e}); fallback ke {FALLBACK_MODEL}")
+        yield from _stream_groq(message, context, FALLBACK_MODEL)

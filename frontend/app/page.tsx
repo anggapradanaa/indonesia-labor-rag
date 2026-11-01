@@ -202,7 +202,7 @@ export default function Home() {
           <StatusPill status={backend} />
           <p>
             Pertanyaan dicocokkan ke seluruh Pasal dan Penjelasan PP 35/2021 (pencarian
-            hybrid + rerank), lalu dijawab Llama 3.3 70B hanya dari teks yang ditemukan.
+            hybrid + rerank), lalu dijawab GPT-OSS 120B (via Groq) hanya dari teks yang ditemukan.
           </p>
           <p>
             Bukan nasihat hukum. Cek kembali Pasal yang dirujuk sebelum mengambil

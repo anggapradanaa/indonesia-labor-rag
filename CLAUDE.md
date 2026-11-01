@@ -8,7 +8,7 @@ RAG chatbot publik untuk **PP Nomor 35 Tahun 2021** (PKWT, Alih Daya, Waktu Kerj
 
 | Layer | Pilihan | Catatan |
 |---|---|---|
-| LLM | Groq `llama-3.3-70b-versatile` | fallback `llama-3.1-8b-instant` saat rate limit |
+| LLM | Groq `openai/gpt-oss-120b` | fallback `openai/gpt-oss-20b` saat rate limit / model nggak tersedia. Llama 3.3 70B & 3.1 8B dimatiin Groq 16 Agu 2026 -> diganti. Override via env `GROQ_MODEL` / `GROQ_FALLBACK_MODEL` |
 | Embedding | BGE-M3 (dense) via **raw `transformers`** + BM25 manual (sparse) | lihat gotcha pyarrow di bawah |
 | Reranker | BGE-reranker-v2-m3 | cross-encoder, CPU |
 | Vector index | Qdrant **local file** (`qdrant_index/`) | dokumen statis → di-commit, BUKAN DB service |
@@ -86,5 +86,5 @@ Chatbot publik penuh, $0, no GPU dipunya sendiri. Deploy ulang: `cd frontend && 
 - `@gradio/client`'s `submit(endpoint, data)` — key di object payload HARUS `parameter_name` (mis. `message`, lowercase, dari nama parameter Python), BUKAN `label` yang ditampilin UI (mis. "Message"). Cek pakai `demo.get_api_info()` kalau nama endpoint/parameter berubah.
 - Next.js API route (`app/api/chat/route.ts`) convert cumulative text dari Gradio (`respond()` yield full partial tiap kali, bukan delta) jadi delta beneran (slice by previous length) sebelum di-stream ke browser — biar frontend tinggal append, nggak perlu logic replace. Stream ke browser formatnya NDJSON (`status`/`delta`/`error`).
 - `Client.connect` TANPA `status_callback` nggak bangunin Space yang sleep (langsung 503). Exception di backend datang sebagai `event.type === "status"` + `stage === "error"`, bukan throw — harus di-handle eksplisit, kalau nggak jawaban kosong diam-diam.
-- Error "gagal menghubungi backend" pas live (Nov 2026) ternyata Space `RUNTIME_ERROR`: container ZeroGPU gagal start di sisi HF (`OCI runtime create failed ... prestart hook`), bukan bug kode. Fix: restart / factory reboot Space dari Settings. `/api/status` sekarang nampilin status ini di UI.
+- Error "gagal menghubungi backend" pas live (Nov 2026) ternyata Space `RUNTIME_ERROR`: container ZeroGPU gagal start di sisi HF (`OCI runtime create failed ... prestart hook`), bukan bug kode. Fix: restart / factory reboot Space dari Settings. `/api/status` sekarang nampilin status ini di UI. Setelah restart, chat MASIH error (`event: error, data: null`) karena model Groq lama (Llama 3.3 70B / 3.1 8B) udah dimatiin 16 Agu 2026 -> ganti ke `openai/gpt-oss-120b` / `-20b` (pakai `reasoning_effort: low`, `include_reasoning: false`). `respond()` sekarang `raise gr.Error(...)` + print traceback supaya penyebab error kelihatan dari luar.
 - Metadata `bab` di `chunks.json` geser 1 Pasal (Pasal 1 ke-tag BAB II, dst) karena heading BAB nempel di akhir chunk sebelumnya. Range asli: PKWT 2–17, Alih Daya 18–20, Waktu Kerja 21–35, PHK 36–59.
